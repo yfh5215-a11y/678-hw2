@@ -1,0 +1,315 @@
+---
+title: "MA678 Homework 2"
+date: "9/20/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 11.5 
+*Residuals and predictions*: The folder `Pyth` contains outcome $y$ and predictors $x_1$, $x_2$ for 40 data points, with a further 20 points with the predictors but no observed outcome. Save the file to your working directory, then read it into R using `read.table()`.
+
+### (a) 
+Use R to fit a linear regression model predicting $y$ from $x_1$, $x_2$, using the first 40 data points in the file. Summarize the inferences and check the fit of your model.
+
+```{r}
+library(ggplot2)
+
+pyth <- read.table("C:/Users/13713/Downloads/pyth.txt", header = TRUE)
+
+train <- pyth[1:40, ]
+test  <- pyth[41:60, ]
+
+fit <- lm(y ~ x1 + x2, data = train)
+summary(fit)          
+par(mfrow = c(2, 2))  
+plot(fit)
+
+### (b) 
+#Display the estimated model graphically as in Figure 10.2
+
+library(ggplot2)
+
+
+x2_mean <- mean(train$x2)
+newdata <- data.frame(x1 = seq(min(train$x1), max(train$x1), length = 100),
+                      x2 = x2_mean)
+
+
+newdata$y_hat <- predict(fit, newdata = newdata)
+
+
+ggplot(train, aes(x = x1, y = y)) +
+  geom_point() +
+  geom_line(data = newdata, aes(x = x1, y = y_hat), color = "red", linewidth = 1) +
+  labs(title = "Fitted model (b) with x2 fixed at its mean",
+       x = "x1", y = "y")
+
+
+
+
+
+
+### (c) 
+#Make a residual plot for this model. Do the assumptions appear to be met?
+
+res_df <- data.frame(
+  fit = predict(fit),
+  res = residuals(fit)
+)
+
+ggplot(res_df, aes(x = fit, y = res)) +
+  geom_point(color = "blue") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Residual plot (c)", x = "Fitted values", y = "Residuals")
+
+
+
+
+
+### (d) 
+#Make predictions for the remaining 20 data points in the file. How confident do you feel about these predictions?
+pred <- predict(fit, newdata = test, interval = "prediction")
+head(pred)
+```
+
+
+```{r}
+## 12.5 
+#*Logarithmic transformation and regression*: Consider the following regression:
+#$$\log(\text{weight})=-3.8+2.1 \log(\text{height})+\text{error,} $$
+#with errors that have standard deviation 0.25. Weights are in pounds and heights are in inches.
+
+### (a) 
+#Fill in the blanks: Approximately 68% of the people will have weights within a factor of ______ and ______ of their predicted values from the regression.
+
+#1.28；0.78
+
+### (b) 
+#Using pen and paper, sketch the regression line and scatterplot of log(weight) versus log(height) that make sense and are consistent with the fitted model. Be sure to label the axes of your graph.
+
+browseURL("figure.pdf")
+
+
+```
+
+
+```{r}
+## 12.6 
+#*Logarithmic transformations*: The folder `Pollution` contains mortality rates and various environmental factors from 60 US metropolitan areas. For this exercise we shall model mortality rate given nitric oxides, sulfur dioxide, and hydrocarbons as inputs. this model is an extreme oversimplication, as it combines all sources of mortality and does not adjust for crucial factors such as age and smoking. We use it to illustrate log transformation in regression.  
+
+### (a) 
+#Create a scatterplot of mortality rate versus level of nitric oxides. Do you think linear regression will fit these data well? Fit the regression and evaluate a residual plot from the regression.
+
+
+knitr::opts_knit$set(root.dir = "C:/Users/13713/Documents/678")
+
+library(ggplot2)
+
+pollution <- read.csv("C:/Users/13713/Documents/678/pollution.csv", header = TRUE)
+
+
+fit1 <- lm(mort ~ nox, data = pollution)
+ggplot(pollution, aes(nox, mort)) + geom_point() + geom_smooth(method = "lm", se = FALSE)
+ggplot(data.frame(fit=fitted(fit1), res=resid(fit1)), aes(fit, res)) + geom_point() + geom_hline(yintercept=0)
+
+
+#The scatterplot of mortality vs NOx shows a curved pattern, and the residual plot confirms non-linearity. A simple linear regression is therefore not an ideal fit.
+
+
+
+
+
+
+
+### (b) 
+#Find an appropriate reansformation that will result in data more appropriate for linear regression. Fit a regression to the transformed data and evaluate the new residual plot.
+
+fit2 <- lm(log(mort) ~ log(nox), data = pollution)
+ggplot(pollution, aes(log(nox), log(mort))) + geom_point() + geom_smooth(method="lm", se=FALSE)
+ggplot(data.frame(fit=fitted(fit2), res=resid(fit2)), aes(fit, res)) + geom_point() + geom_hline(yintercept=0)
+
+
+
+#Applying a log–log transformation (log(mort) on log(nox)) makes the relationship close to linear and stabilizes the variance. The residual plot after transformation shows no major pattern.
+
+### (c) 
+##Now fit a model predicting mortality rate using levels of nitric oxides, sulfur dioxide, and hydrocarbons as inputs. Use appropriate transformation when helpful. Plot the fitted regression model and interpret the coefficients.
+coef(fit2)
+#The slope in the log–log model means: for each 1% increase in NOx, the mortality rate changes by roughly β % (where β is the fitted slope).
+
+
+
+#(d)
+#Now fit a model predicting mortality rate using levels of nitric oxides, sulfur dioxide, and hydrocarbons as inputs. Use appropriate transformation when helpful. Plot the fitted regression model and interpret the coefficients.
+
+fit3 <- lm(log(mort) ~ log(nox) + log(so2) + log(hc), data = pollution)
+ggplot(data.frame(fit=fitted(fit3), actual=log(pollution$mort)),
+       aes(fit, actual)) + geom_point() + geom_abline(intercept=0, slope=1)
+
+#Adding log(so2) and log(hc) yields a multiple log–log model. Each coefficient measures the percentage change in mortality for a 1% change in that pollutant, holding the others constant.
+
+### (e) 
+#Cross validate: fit the model you chose above to the first half of the data and then predict for the second half. You used all the data to construct the model in (d), so this is not really cross validation, but it gives a sense of how the steps of cross validation can be implemented.
+
+
+n <- nrow(pollution); half <- n/2
+fit_cv <- lm(log(mort) ~ log(nox) + log(so2) + log(hc), data = pollution[1:half, ])
+pred <- predict(fit_cv, newdata = pollution[(half+1):n, ])
+ggplot(data.frame(Pred=pred, Act=log(pollution$mort[(half+1):n])),
+       aes(Pred, Act)) + geom_point() + geom_abline(intercept=0, slope=1)
+
+
+#Using the first half of the data to fit the model and predicting the second half shows that predicted and actual log(mortality) agree reasonably well, illustrating a simple cross-validation check.
+```
+
+## 12.7 
+*Cross validation comparison of models with different transformations of outcomes*: when we compare models with transformed continuous outcomes, we must take into account how the nonlinear transformation warps the continuous outcomes. Follow the procedure used to compare models for the mesquite bushes example on page 202.
+
+### (a) 
+Compare models for earnings and for log(earnings) given height and sex as shown in page 84 and 192. Use `earnk` and `log(earnk)` as outcomes.
+
+```{r}
+library(boot)
+
+earnings <- read.csv("C:/Users/13713/Documents/678/earnings.csv")
+library(boot)
+
+
+earn_clean <- subset(earnings, !is.na(earnk) & earnk > 0)
+
+
+fit1 <- lm(earnk ~ height + male, data = earn_clean)
+fit2 <- lm(log(earnk) ~ height + male, data = earn_clean)
+
+
+cv1 <- cv.glm(earn_clean, fit1, K = 10)$delta[1]
+cv2 <- cv.glm(earn_clean, fit2, K = 10)$delta[1]
+
+
+AIC(fit1, fit2)
+cv1; cv2
+
+
+### (b) 
+#Compare models from other exercises in this chapter.
+fitA <- lm(log(mort) ~ log(nox), data = pollution)    
+fitB <- lm(log(mort) ~ log(nox) + log(so2), data = pollution)  
+AIC(fitA, fitB)
+cv.glm(pollution, fitA, K = 10)$delta[1]
+cv.glm(pollution, fitB, K = 10)$delta[1]
+
+```
+
+
+```{r}
+## 12.8 
+#*Log-log transformations*: Suppose that, for a certain population of animals, we can predict log weight from log height as follows:  
+
+#* An animal that is 50 centimeters tall is predicted to weigh 10 kg.
+
+#* Every increase of 1% in height corresponds to a predicted increase of 2% in weight.
+
+#* The weights of approximately 95% of the animals fall within a factor of 1.1 of predicted values.
+
+### (a) 
+#Give the equation of the regression line and the residual standard deviation of the regression.
+
+a <- log(10) - 2 * log(50)   
+b <- 2                       
+
+
+sigma <- log(1.1) / 2
+
+a; b; sigma
+
+### (b) 
+#Suppose the standard deviation of log weights is 20% in this population. What, then, is the $R^{2}$ of the regression model described here?
+
+
+sigma_y <- 0.20
+R2 <- 1 - (sigma^2 / sigma_y^2)
+R2
+
+```
+
+
+```{r}
+## 12.9 
+
+#*Linear and logarithmic transformations*: For a study of congressional elections, you would like a measure of the relative amount of money raised by each of the two major-party candidates in each district. Suppose that you know the amount of money raised by each candidate; label these dollar values $D_i$ and $R_i$. You would like to combine these into a single variable that can be included as an input variable into a model predicting vote share for the Democrats. Discuss the advantages and disadvantages of the following measures:  
+
+### (a) 
+#The simple difference, $D_i - R_i$
+#D – R: Shows the money gap directly. Easy to understand but big districts with more money can dominate even if ratios are similar.
+
+### (b) 
+#The ratio, $D_i / R_i$
+#D / R: Shows how many times more money Democrats raised. Ignores total size but can explode if R is near zero.
+### (c) 
+#The difference on the logarithmic scale, $\log D_i - \log R_i$   
+#log D – log R (same as log(D/R)): Like the ratio but smoother, less affected by very large or small numbers. Works well for regression but needs all amounts > 0.
+### (d) 
+#The relative proportion, $D_{i}/(D_{i}+R_{i})$.
+#D / (D + R): Shows the Democrat share of total money, between 0 and 1. Very intuitive, but it hides how big the total amount is.
+```
+
+
+```{r}
+## 12.11
+#*Elasticity*: An economist runs a regression examining the relations between the average price of cigarettes, $P$, and the quantity purchased, $Q$, across a large sample of counties in the United  States, assuming the functional form, $\log Q=\alpha+\beta \log P$. Suppose the estimate for $\beta$ is 0.3.  Interpret this coefficient. 
+#β means: if log P increases by 1 (price doubles), log Q increases by 0.3. 1 % rise in price leads to about a 0.3 % rise in quantity
+```
+
+
+```{r}
+## 12.13
+#*Building regression models*: Return to the teaching evaluations data from Exercise 10.6. Fit regression models predicting evaluations given many of the inputs in the dataset. Consider interactions, combinations of predictors, and transformations, as appropriate. Consider several  models, discuss in detail the final model that you choose, and also explain why you chose it rather than the others you had considered. 
+
+library(ggplot2)
+library(boot)
+
+setwd("C:/Users/13713/Documents/678")       
+
+course <- read.csv("ProfEvaltnsBeautyPublic.csv")
+
+
+course$eval   <- course$courseevaluation
+course$beauty <- course$btystdave
+course$lclass <- log1p(course$students)
+course$z_beauty <- scale(course$beauty)[,1]
+course$z_age <- scale(course$age)[,1]
+course$female <- factor(course$female)
+course$native <- factor(course$nonenglish == 0)
+
+m1 <- lm(eval ~ z_beauty + z_age + female + native + lclass, data = course)
+m2 <- lm(eval ~ z_beauty * female + poly(z_age, 2) + native + lclass, data = course)
+
+AIC(m1, m2)
+cv.glm(course, m1, K = 10)$delta[1]
+cv.glm(course, m2, K = 10)$delta[1]
+
+final <- m2
+summary(final)
+
+ggplot(data.frame(fit=fitted(final), res=resid(final)),
+       aes(fit, res)) +
+  geom_point(alpha=0.6) +
+  geom_hline(yintercept=0, linetype="dashed")
+
+#I compared several candidate regressions for course evaluations.Model 1 included beauty, age, gender, native language and class size; Model 2 added an interaction between beauty and gender and allowed a quadratic age effect. Using AIC and 10-fold cross-validation, Model 2 gave the best fit while staying interpretable. It shows that beauty raises evaluations more for men than women, native English teachers receive higher scores, and larger classes lower scores. Because Model 2 captures the key interaction and nonlinear age pattern and explains more variation with lower prediction error, we selected it as the final model over simpler alternatives.
+
+```
+
+
+## 12.14
+Prediction from a fitted regression: Consider one of the fitted models for mesquite leaves, for example `fit_4`, in Section 12.6. Suppose you wish to use this model to make inferences about the average mesquite yield in a new set of trees whose predictors are in data frame called  new_trees. Give R code to obtain an estimate and standard error for this population average. You do not need to make the prediction; just give the code. 
+
+```{r}
+predict(fit_4,
+        newdata = new_trees,
+        type   = "response",
+        se.fit = TRUE)
+```
